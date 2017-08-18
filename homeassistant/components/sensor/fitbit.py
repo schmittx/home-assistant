@@ -32,6 +32,8 @@ ATTR_LAST_SAVED_AT = 'last_saved_at'
 
 CONF_MONITORED_RESOURCES = 'monitored_resources'
 CONF_ATTRIBUTION = 'Data provided by Fitbit.com'
+CONF_DECIMAL_SEPARATOR = 'decimal_separator'
+CONF_THOUSAND_SEPARATOR = 'thousand_separator'
 
 DEPENDENCIES = ['http']
 
@@ -73,7 +75,7 @@ FITBIT_RESOURCES_LIST = {
     'body/bmi': 'BMI',
     'body/fat': '%',
     'devices/battery': 'level',
-    'sleep/awakeningsCount': 'times',
+    'sleep/awakeningsCount': 'times awaken',
     'sleep/efficiency': '%',
     'sleep/minutesAfterWakeup': 'minutes',
     'sleep/minutesAsleep': 'minutes',
@@ -445,9 +447,8 @@ class FitbitSensor(Entity):
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement of this entity, if any."""
-        if self.resource_type != 'devices/battery':
-            if self.resource_type != 'sleep/startTime':
-                return self._unit_of_measurement
+        if self.resource_type != 'devices/battery' and self.resource_type != 'sleep/startTime':
+            return self._unit_of_measurement
 
     @property
     def icon(self):
@@ -495,12 +496,18 @@ class FitbitSensor(Entity):
             elif self.resource_type == 'body/weight':
                 self._state = format(float(raw_state), '.1f')
             elif self.resource_type == 'sleep/startTime':
-                self._state = raw_state
-            else:
-                try:
-                    self._state = '{:,}'.format(int(raw_state))
-                except TypeError:
+                if (raw_state == ''):
+                    self._state = '-'
+                else:
                     self._state = raw_state
+            else:
+                if is_metric:
+                    self._state = raw_state
+                else:
+                    try:
+                        self._state = '{0:,}'.format(int(raw_state))
+                    except TypeError:
+                        self._state = raw_state
 
         if self.resource_type == 'activities/heart':
             self._state = response[container][-1]. \

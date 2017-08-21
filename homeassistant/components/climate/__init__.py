@@ -52,6 +52,7 @@ ATTR_TARGET_TEMP_HIGH = 'target_temp_high'
 ATTR_TARGET_TEMP_LOW = 'target_temp_low'
 ATTR_TARGET_TEMP_STEP = 'target_temp_step'
 ATTR_AWAY_MODE = 'away_mode'
+ATTR_ECO_MODE = 'eco_mode'
 ATTR_AUX_HEAT = 'aux_heat'
 ATTR_FAN_MODE = 'fan_mode'
 ATTR_FAN_LIST = 'fan_list'
@@ -442,9 +443,13 @@ class ClimateDevice(Entity):
             data[ATTR_TARGET_TEMP_LOW] = self._convert_for_display(
                 self.target_temperature_low)
 
-        humidity = self.target_humidity
-        if humidity is not None:
-            data[ATTR_HUMIDITY] = humidity
+        current_humidity = self.current_humidity
+        if current_humidity is not None:
+            data[ATTR_CURRENT_HUMIDITY] = current_humidity
+
+        target_humidity = self.target_humidity
+        if target_humidity is not None:
+            data[ATTR_HUMIDITY] = target_humidity
             data[ATTR_CURRENT_HUMIDITY] = self.current_humidity
             data[ATTR_MIN_HUMIDITY] = self.min_humidity
             data[ATTR_MAX_HUMIDITY] = self.max_humidity
@@ -455,7 +460,7 @@ class ClimateDevice(Entity):
             if self.fan_list:
                 data[ATTR_FAN_LIST] = self.fan_list
 
-        operation_mode = self.current_operation
+        operation_mode = self.operation_mode
         if operation_mode is not None:
             data[ATTR_OPERATION_MODE] = operation_mode
             if self.operation_list:
@@ -474,6 +479,10 @@ class ClimateDevice(Entity):
         is_away = self.is_away_mode_on
         if is_away is not None:
             data[ATTR_AWAY_MODE] = STATE_ON if is_away else STATE_OFF
+
+        is_eco = self.is_eco_mode_on
+        if is_eco is not None:
+            data[ATTR_ECO_MODE] = STATE_ON if is_eco else STATE_OFF
 
         is_aux_heat = self.is_aux_heat_on
         if is_aux_heat is not None:
@@ -504,6 +513,11 @@ class ClimateDevice(Entity):
     @property
     def current_operation(self):
         """Return current operation ie. heat, cool, idle."""
+        return None
+
+    @property
+    def operation_mode(self):
+        """Return current operation mode ie. auto, heat, cool, off."""
         return None
 
     @property
@@ -539,6 +553,11 @@ class ClimateDevice(Entity):
     @property
     def is_away_mode_on(self):
         """Return true if away mode is on."""
+        return None
+
+    @property
+    def is_eco_mode_on(self):
+        """Return true if economy mode is on."""
         return None
 
     @property

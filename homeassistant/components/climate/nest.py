@@ -10,9 +10,9 @@ import voluptuous as vol
 
 from homeassistant.components.nest import DATA_NEST
 from homeassistant.components.climate import (
-    STATE_AUTO, STATE_COOL, STATE_HEAT, STATE_IDLE, ClimateDevice,
-    PLATFORM_SCHEMA, ATTR_TARGET_TEMP_HIGH, ATTR_TARGET_TEMP_LOW,
-    ATTR_TEMPERATURE)
+    STATE_AUTO, STATE_COOL, STATE_HEAT, STATE_IDLE, STATE_HEATING,
+    STATE_COOLING, ClimateDevice, PLATFORM_SCHEMA, ATTR_TARGET_TEMP_HIGH,
+    ATTR_TARGET_TEMP_LOW, ATTR_TEMPERATURE)
 from homeassistant.const import (
     TEMP_CELSIUS, TEMP_FAHRENHEIT,
     CONF_SCAN_INTERVAL, STATE_ON, STATE_OFF, STATE_UNKNOWN)
@@ -27,8 +27,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 
 STATE_ECO = 'eco'
 STATE_HEAT_COOL = 'heat-cool'
-STATE_HEATING = 'heating'
-STATE_COOLING = 'cooling'
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
@@ -75,7 +73,7 @@ class NestThermostat(ClimateDevice):
 
         # data attributes
         self._away = None
-        self._eco = None
+        self._has_leaf = None
         self._location = None
         self._name = None
         self._humidity = None
@@ -113,55 +111,52 @@ class NestThermostat(ClimateDevice):
         if self._operation_mode in [STATE_HEAT, STATE_COOL, STATE_OFF,
                                     STATE_ECO]:
             return self._operation_mode
-        elif self._operation_mode == STATE_HEAT_COOL:
+        if self._operation_mode == STATE_HEAT_COOL:
             return STATE_AUTO
         return STATE_UNKNOWN
 
     @property
     def current_operation(self):
         """Return current operation ie. heat, cool, idle."""
-        if self._current_operation in [STATE_OFF, STATE_IDLE]:
+        if self._current_operation in [STATE_HEATING, STATE_COOLING]:
             return self._current_operation
-        elif self._current_operation == STATE_HEATING:
-            return STATE_HEAT
-        elif self._current_operation == STATE_COOLING:
-            return STATE_COOL
-        elif self._current_operation == STATE_HEAT_COOL:
-            return STATE_AUTO
+        if (self._current_operation == STATE_OFF and
+                self._operation_mode != STATE_OFF):
+            return STATE_IDLE
+        if (self._current_operation == STATE_OFF and
+                self._operation_mode == STATE_OFF):
+            return STATE_OFF
         return STATE_UNKNOWN
 
     @property
     def target_temperature(self):
         """Return the temperature we try to reach."""
-        if (self._operation_mode != STATE_HEAT_COOL and
-                not self.is_away_mode_on):
+        if self._operation_mode in [STATE_HEAT, STATE_COOL, STATE_OFF]:
             return self._target_temperature
-        elif (self._operation_mode == STATE_HEAT_COOL and
-              not self.is_away_mode_on):
+        if self._operation_mode == STATE_HEAT_COOL:
             return ((self._target_temperature[0] +
                      self._target_temperature[1]) / 2)
+        if self._operation_mode == STATE_ECO:
+            return ((self._eco_temperature[0] +
+                     self._eco_temperature[1]) / 2)
         return None
 
     @property
     def target_temperature_low(self):
         """Return the lower bound temperature we try to reach."""
-        if (self.is_away_mode_on or self._operation_mode == STATE_ECO) and \
-                self._eco_temperature[0]:
-            # eco_temperature is always a low, high tuple
-            return self._eco_temperature[0]
         if self._operation_mode == STATE_HEAT_COOL:
             return self._target_temperature[0]
+        if self._operation_mode == STATE_ECO:
+            return self._eco_temperature[0]
         return None
 
     @property
     def target_temperature_high(self):
         """Return the upper bound temperature we try to reach."""
-        if (self.is_away_mode_on or self._operation_mode == STATE_ECO) and \
-                self._eco_temperature[1]:
-            # eco_temperature is always a low, high tuple
-            return self._eco_temperature[1]
         if self._operation_mode == STATE_HEAT_COOL:
             return self._target_temperature[1]
+        if self._operation_mode == STATE_ECO:
+            return self._eco_temperature[1]
         return None
 
     @property
@@ -170,9 +165,9 @@ class NestThermostat(ClimateDevice):
         return self._away
 
     @property
-    def is_eco_mode_on(self):
-        """Return if economy mode is on."""
-        return self._eco
+    def is_energy_saving_mode_on(self):
+        """Return if an energy saving target temperature is set."""
+        return self._has_leaf
 
     def set_temperature(self, **kwargs):
         """Set new target temperature."""
@@ -251,7 +246,7 @@ class NestThermostat(ClimateDevice):
         self._target_temperature = self.device.target
         self._fan = self.device.fan
         self._away = self.structure.away == 'away'
-        self._eco = self.device.has_leaf
+        self._has_leaf = self.device.has_leaf
         self._eco_temperature = self.device.eco_temperature
         self._locked_temperature = self.device.locked_temperature
         self._min_temperature = self.device.min_temperature

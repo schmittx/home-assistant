@@ -44,6 +44,8 @@ STATE_IDLE = 'idle'
 STATE_AUTO = 'auto'
 STATE_DRY = 'dry'
 STATE_FAN_ONLY = 'fan_only'
+STATE_HEATING = 'heating'
+STATE_COOLING = 'cooling'
 
 ATTR_CURRENT_TEMPERATURE = 'current_temperature'
 ATTR_MAX_TEMP = 'max_temp'
@@ -52,7 +54,7 @@ ATTR_TARGET_TEMP_HIGH = 'target_temp_high'
 ATTR_TARGET_TEMP_LOW = 'target_temp_low'
 ATTR_TARGET_TEMP_STEP = 'target_temp_step'
 ATTR_AWAY_MODE = 'away_mode'
-ATTR_ECO_MODE = 'eco_mode'
+ATTR_ENERGY_SAVING_MODE = 'energy_saving_mode'
 ATTR_AUX_HEAT = 'aux_heat'
 ATTR_FAN_MODE = 'fan_mode'
 ATTR_FAN_LIST = 'fan_list'
@@ -480,9 +482,10 @@ class ClimateDevice(Entity):
         if is_away is not None:
             data[ATTR_AWAY_MODE] = STATE_ON if is_away else STATE_OFF
 
-        is_eco = self.is_eco_mode_on
-        if is_eco is not None:
-            data[ATTR_ECO_MODE] = STATE_ON if is_eco else STATE_OFF
+        is_energy_saving = self.is_energy_saving_mode_on
+        if is_energy_saving is not None:
+            data[ATTR_ENERGY_SAVING_MODE] = (STATE_ON if
+                                             is_energy_saving else STATE_OFF)
 
         is_aux_heat = self.is_aux_heat_on
         if is_aux_heat is not None:
@@ -556,8 +559,8 @@ class ClimateDevice(Entity):
         return None
 
     @property
-    def is_eco_mode_on(self):
-        """Return true if economy mode is on."""
+    def is_energy_saving_mode_on(self):
+        """Return if an energy saving target temperature is set."""
         return None
 
     @property
